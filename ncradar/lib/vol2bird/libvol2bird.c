@@ -532,17 +532,41 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
         }
     }
 
-    // determine which cells to drop from map based on low mean dBZ / high stdev /
+    // determine which blobs to drop from map based on low mean dBZ / high stdev /
     // small area / high percentage clutter
     for (iCell = 0; iCell < nCells; iCell++) {
-        if (cellProp[iCell].nGates < nGatesCellMin ||
-            (cellProp[iCell].dbzAvg < cellDbzMin &&
-             cellProp[iCell].texAvg > cellStdDevMax &&
-             ((float) cellProp[iCell].nGatesClutter / cellProp[iCell].nGates) < cellClutterFractionMax )) { // FIXME this condition still looks wrong if you ask me
-            // Terms 2,3 and 4 are combined with && to be conservative in labeling stuff as
-            // bird migration --see discussion of issue #37 on GitHub.
+        
+        int notEnoughGates = cellProp[iCell].nGates < nGatesCellMin;
+        int dbzTooLow = cellProp[iCell].dbzAvg < cellDbzMin;
+        int texTooHigh = cellProp[iCell].texAvg > cellStdDevMax;
+        int tooMuchClutter = ((float) cellProp[iCell].nGatesClutter / cellProp[iCell].nGates) < cellClutterFractionMax));
+        
+        if (notEnoughGates) {
+            
+            // this blob is too small too be a weather cell, more likely 
+            // that these are birds. So, drop the blob from the record of 
+            // weather cells 
+
             cellProp[iCell].drop = TRUE;
-            cellProp[iCell].nGates = 0;
+            cellProp[iCell].nGates = 0;  // FIXME why change the number of gates?
+            continue;
+        }
+
+        if (dbzTooLow && texTooHigh) {
+
+            // apparently, we are dealing a blob that is fairly large (it
+            // passes the 'notEnoughGates' condition above, but it has both 
+            // a low dbz and a high vrad texture. In contrast, weather cells
+            // have high dbz and low vrad texture. It is therefore unlikely
+            // that the blob is a weather cell.
+            
+            // FIXME why do we still need to test for clutter fraction?
+            
+            if (tooMuchClutter) {
+                cellProp[iCell].drop = TRUE;
+                cellProp[iCell].nGates = 0;  // FIXME why change the number of gates? 
+            }
+            
         }
     }
 
