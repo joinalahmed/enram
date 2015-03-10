@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define FPRINTFON
+
 
 #include <stdio.h>
 #include <confuse.h>
@@ -85,7 +87,9 @@ static int printMeta(const SCANMETA* meta, const char* varName);
 
 static void printProfile(void);
 
-static void sortCells(CELLPROP *cellProp, const int nCells);
+static int removeDroppedCells(CELLPROP *cellProp, const int nCells);
+
+static void sortCellsByArea(CELLPROP *cellProp, const int nCells);
 
 static void updateFlagFieldsInPointsArray(const float* yObs, const float* yFitted, const int* includedIndex, 
                                           const int nPointsIncluded, float* points);
@@ -539,7 +543,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
         int notEnoughGates = cellProp[iCell].nGates < nGatesCellMin;
         int dbzTooLow = cellProp[iCell].dbzAvg < cellDbzMin;
         int texTooHigh = cellProp[iCell].texAvg > cellStdDevMax;
-        int tooMuchClutter = ((float) cellProp[iCell].nGatesClutter / cellProp[iCell].nGates) > cellClutterFractionMax));
+        int tooMuchClutter = ((float) cellProp[iCell].nGatesClutter / cellProp[iCell].nGates) > cellClutterFractionMax;
         
         if (notEnoughGates) {
             
@@ -548,7 +552,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
             // weather cells 
 
             cellProp[iCell].drop = TRUE;
-            cellProp[iCell].nGates = 0;  // FIXME why change the number of gates?
+            
             continue;
         }
 
@@ -574,7 +578,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
                 // Therefore we drop it from the record of known weather cells
                 
                 cellProp[iCell].drop = TRUE;
-                cellProp[iCell].nGates = 0;  // FIXME why change the number of gates? 
+                
             }
         }
     }
@@ -591,7 +595,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
         fprintf(stderr,"#Valid cells                   : %i/%i\n#\n",nCellsValid,nCells);
         fprintf(stderr,"cellProp: .index .nGates .nGatesClutter .dbzAvg .texAvg .cv   .dbzMax .iRangOfMax .iAzimOfMax .drop\n");
         for (iCell = 0; iCell < nCells; iCell++) {
-            if (cellProp[iCell].nGates == 0) { // FIXME looks like the wrong test should .drop-based
+            if (cellProp[iCell].drop == TRUE) {
                 continue;
             }
             fprintf(stderr,"cellProp: %6d %7d %14d %7.2f %7.2f %5.2f %7.2f %11d %11d %5c\n",
@@ -2191,26 +2195,24 @@ static int printMeta(const SCANMETA* meta, const char* varName) {
 
 
 
-static void sortCells(CELLPROP *cellProp, const int nCells) {
+static void sortCellsByArea(CELLPROP *cellProp, const int nCells) {
 
     // ---------------------------------------------------------------- //
     // Sorting of the cell properties based on cell area.               //
-    // Assume an area equal to zero for cells that are marked 'dropped' //
     // ---------------------------------------------------------------- // 
 
     int iCell;
     int iCellOther;
     CELLPROP tmp;
 
-    /*Sorting of data elements using straight insertion method.*/
+    // Sorting of data elements using straight insertion method.
     for (iCell = 1; iCell < nCells; iCell++) {
 
         tmp = cellProp[iCell];
 
         iCellOther = iCell - 1;
 
-        // FIXME why this convoluted mess, just make a copy already
-        while (iCellOther >= 0 && cellProp[iCellOther].nGates * XABS(cellProp[iCellOther].drop - 1) < tmp.nGates * XABS(tmp.drop - 1)) {
+        while (iCellOther >= 0 && cellProp[iCellOther].nGates < tmp.nGates) {
 
             cellProp[iCellOther + 1] = cellProp[iCellOther];
 
@@ -2222,9 +2224,69 @@ static void sortCells(CELLPROP *cellProp, const int nCells) {
     } //for iCell
 
     return;
-} // sortCells
+} // sortCellsByArea
 
 
+
+
+static int removeDroppedCells(CELLPROP *cellProp, const int nCells) {
+
+
+    int iCell;
+    int iCopy;
+    int nCopied;
+    CELLPROP* cellPropCopy;
+    CELLPROP cellPropEmpty;
+
+
+    #ifdef FPRINTFON
+    for (iCell = 0; iCell < nCells; iCell++) {
+        fprintf(stderr,"(%d/%d): index = %d, nGates = %d\n",iCell,nCells,cellProp[iCell].index,cellProp[iCell].nGates);
+    }
+    fprintf(stderr,"end of list\n");
+    #endif
+
+
+    
+    cellPropCopy = (CELLPROP*) malloc(sizeof(CELLPROP) * nCells);
+    if (!cellPropCopy) {
+        fprintf(stderr,"Requested memory could not be allocated!\n");
+        return -1;
+    }    
+
+    iCopy = 0;
+    
+    for (iCell = 0; iCell < nCells; iCell++) {    
+        
+        if (cellProp[iCell].drop == TRUE) {
+            // pass
+        }  
+        else {
+            cellPropCopy[iCopy] = cellProp[iCell];
+            iCopy += 1;
+        }
+    }
+    
+    nCopied = iCopy;
+    
+    for (iCopy = 0; iCopy < nCopied; iCopy++) {
+        cellProp[iCopy] = cellPropCopy[iCopy];
+    }
+
+    for (iCell = nCopied; iCell < nCells; iCell++) {
+        cellProp[iCell] = cellPropEmpty;
+    }
+
+    #ifdef FPRINTFON
+    for (iCell = 0; iCell < nCells; iCell++) {
+        fprintf(stderr,"(%d/%d): copied = %c, index = %d, nGates = %d\n",iCell,nCells,iCell < nCopied ? 'T':'F',cellProp[iCell].index,cellProp[iCell].nGates);
+    }
+    #endif 
+    
+       
+    return nCopied;
+    
+}
 
 
 
@@ -2310,13 +2372,18 @@ static int updateMap(int *cellImage, const int nGlobal, CELLPROP *cellProp, cons
         }
     }
 
-
-    // sort the cells by area and determine number of valid cells
-    sortCells(cellProp, nCells);
-
-    while (nCellsValid > 0 && cellProp[nCellsValid - 1].nGates < nGatesCellMin) {
-        nCellsValid--;
+    // label small cells so that 'removeDroppedCells()' will remove them (below)
+    for (iCell = 0; iCell < nCells; iCell++) {
+        if (cellProp[iCell].nGates < nGatesCellMin) {
+            cellProp[iCell].drop = TRUE;
+        }
     }
+    
+    // remove all cell that have .drop == TRUE
+    nCellsValid = removeDroppedCells(&cellProp[0],nCells);
+
+    // sort the cells by area
+    sortCellsByArea(&cellProp[0],nCells);
 
     #ifdef FPRINTFON
     fprintf(stderr,"nCellsValid = %d\n",nCellsValid);
