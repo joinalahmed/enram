@@ -419,7 +419,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
     int nCellsValid;
     int nAzim;
     int nRang;
-    float validArea;   // FIXME should be nGatesValid or something
+    float nGatesValid;
     float dbzValue;
     float texValue;
     float vradValue;
@@ -524,10 +524,10 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
 
 
     for (iCell = 0; iCell < nCells; iCell++) {
-        validArea = cellProp[iCell].nGates - cellProp[iCell].nGatesClutter;
-        if (validArea > 0){
-            cellProp[iCell].dbzAvg /= validArea;
-            cellProp[iCell].texAvg /= validArea;
+        nGatesValid = cellProp[iCell].nGates - cellProp[iCell].nGatesClutter;
+        if (nGatesValid > 0){
+            cellProp[iCell].dbzAvg /= nGatesValid;
+            cellProp[iCell].texAvg /= nGatesValid;
             cellProp[iCell].cv = cellProp[iCell].texAvg / cellProp[iCell].dbzAvg;
         }
     }
