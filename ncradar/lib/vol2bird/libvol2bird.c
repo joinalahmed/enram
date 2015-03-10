@@ -171,7 +171,7 @@ static int useStaticClutterData;
 // cell to be considered in the rest of the analysis
 static int nGatesCellMin;
 
-// Maximum percentage of clutter in a cell 
+// cells with clutter fractions above this value are likely not birds
 static float cellClutterFractionMax;
 
 // when analyzing cells, only cells for which the average dbz is 
@@ -419,7 +419,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
     int nCellsValid;
     int nAzim;
     int nRang;
-    float validArea;
+    float validArea;   // FIXME should be nGatesValid or something
     float dbzValue;
     float texValue;
     float vradValue;
@@ -539,7 +539,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
         int notEnoughGates = cellProp[iCell].nGates < nGatesCellMin;
         int dbzTooLow = cellProp[iCell].dbzAvg < cellDbzMin;
         int texTooHigh = cellProp[iCell].texAvg > cellStdDevMax;
-        int tooMuchClutter = ((float) cellProp[iCell].nGatesClutter / cellProp[iCell].nGates) < cellClutterFractionMax));
+        int tooMuchClutter = ((float) cellProp[iCell].nGatesClutter / cellProp[iCell].nGates) > cellClutterFractionMax));
         
         if (notEnoughGates) {
             
@@ -560,13 +560,22 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
             // have high dbz and low vrad texture. It is therefore unlikely
             // that the blob is a weather cell.
             
-            // FIXME why do we still need to test for clutter fraction?
-            
             if (tooMuchClutter) {
+                // pass
+            }
+            else {
+                
+                // So at this point we have established that we are 
+                // dealing with a blob that is:
+                //     1. fairly large
+                //     2. has too low dbz to be precipitation
+                //     3. has too high vrad texture to be precipitation
+                //     4. has too little clutter to be attributed to clutter
+                // Therefore we drop it from the record of known weather cells
+                
                 cellProp[iCell].drop = TRUE;
                 cellProp[iCell].nGates = 0;  // FIXME why change the number of gates? 
             }
-            
         }
     }
 
@@ -582,7 +591,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
         fprintf(stderr,"#Valid cells                   : %i/%i\n#\n",nCellsValid,nCells);
         fprintf(stderr,"cellProp: .index .nGates .nGatesClutter .dbzAvg .texAvg .cv   .dbzMax .iRangOfMax .iAzimOfMax .drop\n");
         for (iCell = 0; iCell < nCells; iCell++) {
-            if (cellProp[iCell].nGates == 0) {
+            if (cellProp[iCell].nGates == 0) { // FIXME looks like the wrong test should .drop-based
                 continue;
             }
             fprintf(stderr,"cellProp: %6d %7d %14d %7.2f %7.2f %5.2f %7.2f %11d %11d %5c\n",
@@ -2200,6 +2209,7 @@ static void sortCells(CELLPROP *cellProp, const int nCells) {
 
         iCellOther = iCell - 1;
 
+        // FIXME why this convoluted mess, just make a copy already
         while (iCellOther >= 0 && cellProp[iCellOther].nGates * XABS(cellProp[iCellOther].drop - 1) < tmp.nGates * XABS(tmp.drop - 1)) {
 
             cellProp[iCellOther + 1] = cellProp[iCellOther];
