@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define FPRINTFON
-
 
 #include <stdio.h>
 #include <confuse.h>
@@ -457,12 +455,12 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
         cellProp[iCell].iAzimOfMax = -1;
         cellProp[iCell].nGates = 0;
         cellProp[iCell].nGatesClutter = 0;
-        cellProp[iCell].dbzAvg = 0;
-        cellProp[iCell].texAvg = 0;
-        cellProp[iCell].dbzMax = dbzMeta->valueOffset;
-        cellProp[iCell].index = iCell;
-        cellProp[iCell].drop = FALSE;
-        cellProp[iCell].cv = 0;
+        cellProp[iCell].dbzAvg = NAN;
+        cellProp[iCell].texAvg = NAN;
+        cellProp[iCell].dbzMax = NAN;
+        cellProp[iCell].index = -1;
+        cellProp[iCell].drop = TRUE;
+        cellProp[iCell].cv = NAN;
     }
 
     // Calculation of cell properties.
@@ -488,6 +486,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
             #endif
 
             cellProp[iCell].nGates += 1;
+            cellProp[iCell].drop = FALSE;
 
             // low radial velocities are treated as clutter, not included in calculation cell properties
             if (vradValue < vradMin){
@@ -510,8 +509,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
             }
 
 
-
-            if (dbzValue > cellProp[iCell].dbzMax) {
+            if (isnanf(cellProp[iCell].dbzMax) || dbzValue > cellProp[iCell].dbzMax) {
 
                 #ifdef FPRINTFON
                 fprintf(stderr,"%d: new dbzMax value of %f found for this cell (%d).\n",iGlobal,dbzValue,iCell);
@@ -521,8 +519,21 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
                 cellProp[iCell].iRangOfMax = iGlobal%nRang;
                 cellProp[iCell].iAzimOfMax = iGlobal/nRang;
             }
-            cellProp[iCell].dbzAvg += dbzValue;
-            cellProp[iCell].texAvg += texValue;
+
+            if (isnanf(cellProp[iCell].dbzAvg)) {
+                cellProp[iCell].dbzAvg = dbzValue;
+            } 
+            else {
+                cellProp[iCell].dbzAvg += dbzValue;
+            }
+            
+            if (isnanf(cellProp[iCell].texAvg)) {
+                cellProp[iCell].texAvg = texValue;
+            } 
+            else {
+                cellProp[iCell].texAvg += texValue;
+            }
+            
         } // for (iRang = 0; iRang < nRang; iRang++)
     } // for (iAzim = 0; iAzim < nAzim; iAzim++)
 
@@ -1012,22 +1023,27 @@ static void constructPointsArray(PolarVolume_t* volume) {
             // ------------------------------------------------------------- //
 
             if (printDbz == TRUE) {
+                fprintf(stderr,"product = dbz\n");
                 printMeta(&dbzMeta,"dbzMeta");
                 printImageUChar(&dbzMeta,&dbzImage[0]);
             }
             if (printVrad == TRUE) {
+                fprintf(stderr,"product = vrad\n");
                 printMeta(&vradMeta,"vradMeta");
                 printImageUChar(&vradMeta,&vradImage[0]);
             }
             if (printTex == TRUE) {
+                fprintf(stderr,"product = tex\n");
                 printMeta(&texMeta,"texMeta");
                 printImageUChar(&texMeta,&texImage[0]);
             }
             if (printCell == TRUE) {
+                fprintf(stderr,"product = cell\n");
                 printMeta(&cellMeta,"cellMeta");
                 printImageInt(&cellMeta,&cellImage[0]);
             }
             if (printClut == TRUE) { 
+                fprintf(stderr,"product = clut\n");
                 printMeta(&clutterMeta,"clutterMeta");
                 printImageUChar(&clutterMeta,&clutterImage[0]);
             }
@@ -2237,6 +2253,18 @@ static int removeDroppedCells(CELLPROP *cellProp, const int nCells) {
     int nCopied;
     CELLPROP* cellPropCopy;
     CELLPROP cellPropEmpty;
+    
+    cellPropEmpty.iRangOfMax = -1;
+    cellPropEmpty.iAzimOfMax = -1;
+    cellPropEmpty.nGates = -1;
+    cellPropEmpty.nGatesClutter = -1;
+    cellPropEmpty.dbzAvg = 0.0f;
+    cellPropEmpty.texAvg = 0.0f;
+    cellPropEmpty.dbzMax = 0.0f;
+    cellPropEmpty.index = -1;
+    cellPropEmpty.drop = TRUE;
+    cellPropEmpty.cv = 0.0f;
+
 
 
     #ifdef FPRINTFON
@@ -2718,9 +2746,6 @@ void printImageInt(const SCANMETA* meta, const int* imageInt) {
     iGlobal = 0;
     maxValue = 0;
     needsSignChar = FALSE;
-    
-    fprintf(stderr,"elevAngle = %f degrees\n",meta->elev);
-    
     
     // first, determine how many characters are needed to print array 'imageInt'
     for (iAzim = 0; iAzim < nAzim; iAzim++) { 
