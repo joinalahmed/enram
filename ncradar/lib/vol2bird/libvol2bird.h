@@ -90,6 +90,8 @@ typedef struct scanmeta SCANMETA;
 
 void vol2birdCalcProfiles();
 
+void vol2birdExportBirdProfileAsJSON(void);
+
 void vol2birdPrintIndexArrays(void);
 
 void vol2birdPrintOptions(void);

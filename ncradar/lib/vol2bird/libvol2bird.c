@@ -2190,6 +2190,127 @@ static void printGateCode(char* flags, const unsigned int gateCode) {
 
 
 
+void printImageInt(const SCANMETA* meta, const int* imageInt) {
+
+
+    int nRang = meta->nRang;
+    int nAzim = meta->nAzim;
+    int iRang;
+    int iAzim;
+    int iGlobal;
+    int needsSignChar;
+    int maxValue;
+    
+
+    int thisValue;
+    int nChars;
+    char* formatStr;
+    
+    iGlobal = 0;
+    maxValue = 0;
+    needsSignChar = FALSE;
+    
+    // first, determine how many characters are needed to print array 'imageInt'
+    for (iAzim = 0; iAzim < nAzim; iAzim++) { 
+        
+        for (iRang = 0; iRang < nRang; iRang++) {
+            
+            thisValue = (int) XABS(imageInt[iGlobal]);
+            if (imageInt[iGlobal] < 0) {
+                needsSignChar = TRUE;
+            }
+            if (thisValue > maxValue) {
+                maxValue = thisValue;
+            } ;
+            
+            iGlobal += 1;
+            
+        }
+    }
+
+
+    nChars = (int) ceil(log(maxValue + 1)/log(10));
+
+    if (needsSignChar) {
+        nChars += 1;
+    }
+    
+    switch (nChars) {
+        case 0 :
+            formatStr = " %1d";
+            break; 
+        case 1 :
+            formatStr = " %1d";
+            break; 
+        case 2 :
+            formatStr = " %2d"; 
+            break;
+        case 3 :
+            formatStr = " %3d"; 
+            break;
+        case 4 :
+            formatStr = " %4d"; 
+            break;
+        default :
+            formatStr = " %8d"; 
+    }
+    
+    
+    iGlobal = 0;
+    
+    for (iAzim = 0; iAzim < nAzim; iAzim++) { 
+        
+        for (iRang = 0; iRang < nRang; iRang++) {
+    
+            iGlobal = iRang + iAzim * nRang;
+            
+            thisValue = (int) imageInt[iGlobal];
+            
+            fprintf(stderr,formatStr,thisValue);
+            
+            iGlobal += 1;
+            
+        }
+        fprintf(stderr,"\n");
+    }
+        
+} // printImageInt
+
+
+
+
+void printImageUChar(const SCANMETA* meta, const unsigned char* imageUChar) {
+
+    int nAzim;
+    int iAzim;
+    int nRang;
+    int iRang;
+    int iGlobal;
+
+    nAzim = meta->nAzim;
+    nRang = meta->nRang;
+    
+    int* imageInt = malloc(sizeof(int) * nRang * nAzim);
+    iGlobal = 0;
+    
+    for (iAzim = 0; iAzim < nAzim; iAzim++) {
+        for (iRang = 0; iRang < nRang; iRang++) {
+            
+            iGlobal = iRang + iAzim * nRang;
+            imageInt[iGlobal] = (int) imageUChar[iGlobal];
+            iGlobal += 1;
+            
+        }
+    }     
+
+    printImageInt(meta,imageInt);
+    
+    free(imageInt);
+    
+} // printImageUChar
+
+
+
 
 static int printMeta(const SCANMETA* meta, const char* varName) {
     
@@ -2726,129 +2847,188 @@ void vol2birdCalcProfiles() {
 
 
 
-
-void printImageInt(const SCANMETA* meta, const int* imageInt) {
-
-
-    int nRang = meta->nRang;
-    int nAzim = meta->nAzim;
-    int iRang;
-    int iAzim;
-    int iGlobal;
-    int needsSignChar;
-    int maxValue;
+void vol2birdExportBirdProfileAsJSON(void) {
     
+    // produces valid JSON according to http://jsonlint.com/
+    
+    if (initializationSuccessful==FALSE) {
+        fprintf(stderr,"You need to initialize vol2bird before you can use it. Aborting.\n");
+        return;
+    }
+    
+    if (iProfileTypeLast != 1) {
+        fprintf(stderr,"Export method expects profile 1, but found %d. Aborting.",iProfileTypeLast);
+        return; 
+    }
+    
+    int iLayer;
 
-    int thisValue;
-    int nChars;
-    char* formatStr;
+
+    FILE *f = fopen("vol2bird-profile1.json", "w");
+    if (f == NULL)
+    {
+        printf("Error opening file 'vol2bird-profile1.json'!\n");
+        exit(1);
+    }
     
-    iGlobal = 0;
-    maxValue = 0;
-    needsSignChar = FALSE;
-    
-    // first, determine how many characters are needed to print array 'imageInt'
-    for (iAzim = 0; iAzim < nAzim; iAzim++) { 
+    fprintf(f,"[\n");
+    for (iLayer = 0;iLayer < nLayers; iLayer += 1) {
         
-        for (iRang = 0; iRang < nRang; iRang++) {
-            
-            thisValue = (int) XABS(imageInt[iGlobal]);
-            if (imageInt[iGlobal] < 0) {
-                needsSignChar = TRUE;
+        fprintf(f,"   {\n");
+        
+        {
+            char varName[] = "altmin";
+            float val = profile[iLayer * nColsProfile +  0];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
             }
-            if (thisValue > maxValue) {
-                maxValue = thisValue;
-            } ;
-            
-            iGlobal += 1;
-            
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
         }
-    }
-
-
-    nChars = (int) ceil(log(maxValue + 1)/log(10));
-
-    if (needsSignChar) {
-        nChars += 1;
-    }
-    
-    switch (nChars) {
-        case 0 :
-            formatStr = " %1d";
-            break; 
-        case 1 :
-            formatStr = " %1d";
-            break; 
-        case 2 :
-            formatStr = " %2d"; 
-            break;
-        case 3 :
-            formatStr = " %3d"; 
-            break;
-        case 4 :
-            formatStr = " %4d"; 
-            break;
-        default :
-            formatStr = " %8d"; 
-    }
-    
-    
-    iGlobal = 0;
-    
-    for (iAzim = 0; iAzim < nAzim; iAzim++) { 
         
-        for (iRang = 0; iRang < nRang; iRang++) {
-    
-            iGlobal = iRang + iAzim * nRang;
-            
-            thisValue = (int) imageInt[iGlobal];
-            
-            fprintf(stderr,formatStr,thisValue);
-            
-            iGlobal += 1;
-            
+        {
+            char varName[] = "altmax";
+            float val = profile[iLayer * nColsProfile +  1];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
         }
-        fprintf(stderr,"\n");
-    }
+            
+        {
+            char varName[] = "u";
+            float val = profile[iLayer * nColsProfile +  2];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
         
-} // printImageInt
-
-
-
-
-void printImageUChar(const SCANMETA* meta, const unsigned char* imageUChar) {
-
-    int nAzim;
-    int iAzim;
-    int nRang;
-    int iRang;
-    int iGlobal;
-
-    nAzim = meta->nAzim;
-    nRang = meta->nRang;
-    
-    int* imageInt = malloc(sizeof(int) * nRang * nAzim);
-    iGlobal = 0;
-    
-    for (iAzim = 0; iAzim < nAzim; iAzim++) {
-        for (iRang = 0; iRang < nRang; iRang++) {
-            
-            iGlobal = iRang + iAzim * nRang;
-            imageInt[iGlobal] = (int) imageUChar[iGlobal];
-            iGlobal += 1;
-            
+        {    
+            char varName[] = "v";
+            float val = profile[iLayer * nColsProfile +  3];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
         }
-    }     
+        
+        {    
+            char varName[] = "w";
+            float val = profile[iLayer * nColsProfile +  4];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {
+            char varName[] = "hSpeed";
+            float val = profile[iLayer * nColsProfile +  5];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+            
+        {
+            char varName[] = "hDir";
+            float val = profile[iLayer * nColsProfile +  6];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {    
+            char varName[] = "chi";
+            float val = profile[iLayer * nColsProfile +  7];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+            
+        {
+            char varName[] = "hasGap";
+            float val = profile[iLayer * nColsProfile +  8];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%s,\n",varName,val == TRUE ? "true" : "false");
+            }
+        }
 
-    printImageInt(meta,imageInt);
+        {            
+            char varName[] = "dbzAvg";
+            float val = profile[iLayer * nColsProfile +  9];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+            
+        {
+            char varName[] = "nPoints";
+            float val = profile[iLayer * nColsProfile +  10];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%d,\n",varName,(int) val);
+            }
+        }
+            
+        {
+            char varName[] = "eta";
+            float val = profile[iLayer * nColsProfile +  11];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {    
+            char varName[] = "rhobird";
+            float val = profile[iLayer * nColsProfile +  12];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f\n",varName,val);
+            }
+        }
+        
+        fprintf(f,"   }");
+        if (iLayer < nLayers - 1) {
+            fprintf(f,",");
+        }
+        fprintf(f,"\n");
+    }
+    fprintf(f,"]\n");
+
+}
     
-    free(imageInt);
-    
-} // printImageUChar
-
-
-
-
 void vol2birdPrintIndexArrays(void) {
     
     if (initializationSuccessful==FALSE) {
