@@ -458,7 +458,7 @@ static int analyzeCells(const unsigned char *dbzImage, const unsigned char *vrad
         cellProp[iCell].dbzAvg = NAN;
         cellProp[iCell].texAvg = NAN;
         cellProp[iCell].dbzMax = NAN;
-        cellProp[iCell].index = -1;
+        cellProp[iCell].index = iCell;
         cellProp[iCell].drop = TRUE;
         cellProp[iCell].cv = NAN;
     }
@@ -2406,7 +2406,7 @@ static int updateMap(int *cellImage, const int nGlobal, CELLPROP *cellProp, cons
             cellProp[iCell].drop = TRUE;
         }
     }
-    
+
     // remove all cell that have .drop == TRUE
     nCellsValid = removeDroppedCells(&cellProp[0],nCells);
 
