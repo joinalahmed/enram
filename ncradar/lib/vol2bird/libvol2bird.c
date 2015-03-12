@@ -53,6 +53,8 @@ static int detNumberOfGates(const int iLayer, const float rangeScale, const floa
 
 static int detSvdfitArraySize(PolarVolume_t* volume);
 
+static void exportBirdProfileAsJSON(void);
+
 static int findWeatherCells(const unsigned char *dbzImage, int *cellImage, const SCANMETA *dbzMeta);
 
 static int findNearbyGateIndex(const int nAzimParent, const int nRangParent, const int iParent,
@@ -161,6 +163,9 @@ static float radarWavelength;
 
 // whether clutter data is used
 static int useStaticClutterData;
+
+// whether you want to export the bird density profile as JSON 
+static int exportBirdProfileAsJSONVar;
 
 
 
@@ -1213,6 +1218,189 @@ static int detSvdfitArraySize(PolarVolume_t* volume) {
 
 
 
+static void exportBirdProfileAsJSON(void) {
+    
+    // produces valid JSON according to http://jsonlint.com/
+    
+    if (initializationSuccessful==FALSE) {
+        fprintf(stderr,"You need to initialize vol2bird before you can use it. Aborting.\n");
+        return;
+    }
+    
+    if (iProfileTypeLast != 1) {
+        fprintf(stderr,"Export method expects profile 1, but found %d. Aborting.",iProfileTypeLast);
+        return; 
+    }
+    
+    int iLayer;
+
+
+    FILE *f = fopen("vol2bird-profile1.json", "w");
+    if (f == NULL)
+    {
+        printf("Error opening file 'vol2bird-profile1.json'!\n");
+        exit(1);
+    }
+    
+    fprintf(f,"[\n");
+    for (iLayer = 0;iLayer < nLayers; iLayer += 1) {
+        
+        fprintf(f,"   {\n");
+        
+        {
+            char varName[] = "altmin";
+            float val = profile[iLayer * nColsProfile +  0];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {
+            char varName[] = "altmax";
+            float val = profile[iLayer * nColsProfile +  1];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+            
+        {
+            char varName[] = "u";
+            float val = profile[iLayer * nColsProfile +  2];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {    
+            char varName[] = "v";
+            float val = profile[iLayer * nColsProfile +  3];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {    
+            char varName[] = "w";
+            float val = profile[iLayer * nColsProfile +  4];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {
+            char varName[] = "hSpeed";
+            float val = profile[iLayer * nColsProfile +  5];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+            
+        {
+            char varName[] = "hDir";
+            float val = profile[iLayer * nColsProfile +  6];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {    
+            char varName[] = "chi";
+            float val = profile[iLayer * nColsProfile +  7];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+            
+        {
+            char varName[] = "hasGap";
+            float val = profile[iLayer * nColsProfile +  8];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%s,\n",varName,val == TRUE ? "true" : "false");
+            }
+        }
+
+        {            
+            char varName[] = "dbzAvg";
+            float val = profile[iLayer * nColsProfile +  9];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+            
+        {
+            char varName[] = "nPoints";
+            float val = profile[iLayer * nColsProfile +  10];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%d,\n",varName,(int) val);
+            }
+        }
+            
+        {
+            char varName[] = "eta";
+            float val = profile[iLayer * nColsProfile +  11];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null,\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
+            }
+        }
+        
+        {    
+            char varName[] = "rhobird";
+            float val = profile[iLayer * nColsProfile +  12];
+            if (isnanf(val) == TRUE) {
+                fprintf(f,"    \"%s\":null\n",varName);
+            }
+            else {
+                fprintf(f,"    \"%s\":%.2f\n",varName,val);
+            }
+        }
+        
+        fprintf(f,"   }");
+        if (iLayer < nLayers - 1) {
+            fprintf(f,",");
+        }
+        fprintf(f,"\n");
+    }
+    fprintf(f,"]\n");
+
+}
+
+
 
 
 static int findWeatherCells(const unsigned char *dbzImage, int *cellImage,
@@ -1811,8 +1999,6 @@ static int hasAzimuthGap(const float* points, const int nPoints) {
 
 
 
-
-
 static int includeGate(const int iProfileType, const unsigned int gateCode) {
     
     int doInclude = TRUE;
@@ -2041,6 +2227,7 @@ static int readUserConfigOptions(void) {
         CFG_BOOL("FIT_VRAD",TRUE,CFGF_NONE),
         CFG_BOOL("PRINT_PROFILE",TRUE,CFGF_NONE),
         CFG_BOOL("PRINT_POINTS_ARRAY",FALSE,CFGF_NONE),
+        CFG_BOOL("EXPORT_BIRD_PROFILE_AS_JSON",FALSE,CFGF_NONE),
         CFG_END()
     };
     
@@ -2053,7 +2240,6 @@ static int readUserConfigOptions(void) {
     return 0;
 
 } // readUserConfigOptions
-    
 
 
 
@@ -2125,6 +2311,8 @@ static int mapDataFromRave(PolarScan_t* scan, SCANMETA* meta, unsigned char* val
 
 static void mapDataToRave(void) {
     
+    // FIXME This method is a stub, see issue #84
+    
     // initialize the profile object
     VerticalProfile_t* profileRave = NULL;
 
@@ -2133,7 +2321,6 @@ static void mapDataToRave(void) {
 
     RAVE_OBJECT_RELEASE(profileRave);
 
-    
     return;
     
 }
@@ -2840,6 +3027,9 @@ void vol2birdCalcProfiles() {
         if (printProfileVar ==  TRUE) {
             printProfile();
         }
+        if (iProfileType == 1 && exportBirdProfileAsJSONVar == TRUE) {
+            exportBirdProfileAsJSON();
+        }
 
     } // endfor (iProfileType = nProfileTypes; iProfileType > 0; iProfileType--)
 
@@ -2847,187 +3037,6 @@ void vol2birdCalcProfiles() {
 
 
 
-void vol2birdExportBirdProfileAsJSON(void) {
-    
-    // produces valid JSON according to http://jsonlint.com/
-    
-    if (initializationSuccessful==FALSE) {
-        fprintf(stderr,"You need to initialize vol2bird before you can use it. Aborting.\n");
-        return;
-    }
-    
-    if (iProfileTypeLast != 1) {
-        fprintf(stderr,"Export method expects profile 1, but found %d. Aborting.",iProfileTypeLast);
-        return; 
-    }
-    
-    int iLayer;
-
-
-    FILE *f = fopen("vol2bird-profile1.json", "w");
-    if (f == NULL)
-    {
-        printf("Error opening file 'vol2bird-profile1.json'!\n");
-        exit(1);
-    }
-    
-    fprintf(f,"[\n");
-    for (iLayer = 0;iLayer < nLayers; iLayer += 1) {
-        
-        fprintf(f,"   {\n");
-        
-        {
-            char varName[] = "altmin";
-            float val = profile[iLayer * nColsProfile +  0];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-        
-        {
-            char varName[] = "altmax";
-            float val = profile[iLayer * nColsProfile +  1];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-            
-        {
-            char varName[] = "u";
-            float val = profile[iLayer * nColsProfile +  2];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-        
-        {    
-            char varName[] = "v";
-            float val = profile[iLayer * nColsProfile +  3];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-        
-        {    
-            char varName[] = "w";
-            float val = profile[iLayer * nColsProfile +  4];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-        
-        {
-            char varName[] = "hSpeed";
-            float val = profile[iLayer * nColsProfile +  5];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-            
-        {
-            char varName[] = "hDir";
-            float val = profile[iLayer * nColsProfile +  6];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-        
-        {    
-            char varName[] = "chi";
-            float val = profile[iLayer * nColsProfile +  7];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-            
-        {
-            char varName[] = "hasGap";
-            float val = profile[iLayer * nColsProfile +  8];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%s,\n",varName,val == TRUE ? "true" : "false");
-            }
-        }
-
-        {            
-            char varName[] = "dbzAvg";
-            float val = profile[iLayer * nColsProfile +  9];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-            
-        {
-            char varName[] = "nPoints";
-            float val = profile[iLayer * nColsProfile +  10];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%d,\n",varName,(int) val);
-            }
-        }
-            
-        {
-            char varName[] = "eta";
-            float val = profile[iLayer * nColsProfile +  11];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null,\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f,\n",varName,val);
-            }
-        }
-        
-        {    
-            char varName[] = "rhobird";
-            float val = profile[iLayer * nColsProfile +  12];
-            if (isnanf(val) == TRUE) {
-                fprintf(f,"    \"%s\":null\n",varName);
-            }
-            else {
-                fprintf(f,"    \"%s\":%.2f\n",varName,val);
-            }
-        }
-        
-        fprintf(f,"   }");
-        if (iLayer < nLayers - 1) {
-            fprintf(f,",");
-        }
-        fprintf(f,"\n");
-    }
-    fprintf(f,"]\n");
-
-}
     
 void vol2birdPrintIndexArrays(void) {
     
@@ -3208,8 +3217,7 @@ int vol2birdSetUp(PolarVolume_t* volume) {
     printProfileVar = cfg_getbool(cfg,"PRINT_PROFILE");
     printPointsArray = cfg_getbool(cfg,"PRINT_POINTS_ARRAY");
     fitVrad = cfg_getbool(cfg,"FIT_VRAD");
-
-
+    exportBirdProfileAsJSONVar = cfg_getbool(cfg,"EXPORT_BIRD_PROFILE_AS_JSON"); 
 
     // ------------------------------------------------------------- //
     //              vol2bird options from constants.h                //
