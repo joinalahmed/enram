@@ -3475,17 +3475,17 @@ int vol2birdSetUp(PolarVolume_t* volume) {
     // these next three variables are a quick fix
     profile1 = (float*) malloc(sizeof(float) * nRowsProfile * nColsProfile);
     if (profile1 == NULL) {
-        fprintf(stderr,"Error pre-allocating array 'profile'.\n"); 
+        fprintf(stderr,"Error pre-allocating array 'profile1'.\n"); 
         return -1;
     }
     profile2 = (float*) malloc(sizeof(float) * nRowsProfile * nColsProfile);
     if (profile2 == NULL) {
-        fprintf(stderr,"Error pre-allocating array 'profile'.\n"); 
+        fprintf(stderr,"Error pre-allocating array 'profile2'.\n"); 
         return -1;
     }
     profile3 = (float*) malloc(sizeof(float) * nRowsProfile * nColsProfile);
     if (profile3 == NULL) {
-        fprintf(stderr,"Error pre-allocating array 'profile'.\n"); 
+        fprintf(stderr,"Error pre-allocating array 'profile3'.\n"); 
         return -1;
     }
 
