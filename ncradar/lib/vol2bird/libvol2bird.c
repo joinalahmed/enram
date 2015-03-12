@@ -369,6 +369,12 @@ static int nColsProfile;
 // the profile array itself
 static float* profile;
 
+// these next 3 profile arrays are an ugly way to make sure 
+// vol2birdGetProfile() can deliver its data
+static float* profile1;
+static float* profile2;
+static float* profile3;
+
 // the type of profile that was last calculated
 static int iProfileTypeLast;
 
@@ -3024,16 +3030,93 @@ void vol2birdCalcProfiles() {
             
         } // endfor (iLayer = 0; iLayer < nLayers; iLayer++)
 
-        if (printProfileVar ==  TRUE) {
+        if (printProfileVar == TRUE) {
             printProfile();
         }
         if (iProfileType == 1 && exportBirdProfileAsJSONVar == TRUE) {
             exportBirdProfileAsJSON();
         }
 
+
+        // ---------------------------------------------------------------- //
+        //       this next section is a bit ugly but it does the job        //
+        // ---------------------------------------------------------------- //
+        
+        int iCopied = 0;
+        int iColProfile;
+        int iRowProfile;
+        for (iRowProfile = 0; iRowProfile < nRowsProfile; iRowProfile++) {
+            for (iColProfile = 0; iColProfile < nColsProfile; iColProfile++) {
+                switch (iProfileType) {
+                    case 1:
+                        profile1[iCopied] = profile[iCopied];
+                        break;
+                    case 2:
+                        profile2[iCopied] = profile[iCopied];
+                        break;
+                    case 3:
+                        profile3[iCopied] = profile[iCopied];
+                        break;
+                    default:
+                        fprintf(stderr, "Something is wrong this should not happen.\n");
+                }
+                iCopied += 1;
+            }
+        }
+
     } // endfor (iProfileType = nProfileTypes; iProfileType > 0; iProfileType--)
 
 } // vol2birdCalcProfiles
+
+
+
+
+int vol2birdGetNColsProfile(void) {
+
+    if (initializationSuccessful==FALSE) {
+        fprintf(stderr,"You need to initialize vol2bird before you can use it. Aborting.\n");
+        return -1;
+    }
+
+    return nColsProfile;
+} // vol2birdGetNColsProfile
+
+
+
+
+int vol2birdGetNRowsProfile(void) {
+    
+    if (initializationSuccessful==FALSE) {
+        fprintf(stderr,"You need to initialize vol2bird before you can use it. Aborting.\n");
+        return -1;
+    }
+
+    return nRowsProfile;
+} // vol2birdGetNColsProfile
+
+
+
+
+float* vol2birdGetProfile(int iProfileType) {
+
+    if (initializationSuccessful==FALSE) {
+        fprintf(stderr,"You need to initialize vol2bird before you can use it. Aborting.\n");
+        return;
+    }
+    
+    switch (iProfileType) {
+        case 1 : 
+            return &profile1[0];
+        case 2 : 
+            return &profile2[0];
+        case 3 : 
+            return &profile3[0];
+        default :
+            fprintf(stderr, "Something went wrong; behavior not implemented for given iProfileType.\n");
+    }
+    
+    return;
+}
 
 
 
@@ -3389,12 +3472,32 @@ int vol2birdSetUp(PolarVolume_t* volume) {
         return -1;
     }
 
+    // these next three variables are a quick fix
+    profile1 = (float*) malloc(sizeof(float) * nRowsProfile * nColsProfile);
+    if (profile1 == NULL) {
+        fprintf(stderr,"Error pre-allocating array 'profile'.\n"); 
+        return -1;
+    }
+    profile2 = (float*) malloc(sizeof(float) * nRowsProfile * nColsProfile);
+    if (profile2 == NULL) {
+        fprintf(stderr,"Error pre-allocating array 'profile'.\n"); 
+        return -1;
+    }
+    profile3 = (float*) malloc(sizeof(float) * nRowsProfile * nColsProfile);
+    if (profile3 == NULL) {
+        fprintf(stderr,"Error pre-allocating array 'profile'.\n"); 
+        return -1;
+    }
+
     int iRowProfile;
     int iColProfile;
         
     for (iRowProfile = 0; iRowProfile < nRowsProfile; iRowProfile++) {
         for (iColProfile = 0; iColProfile < nColsProfile; iColProfile++) {
             profile[iRowProfile*nColsProfile + iColProfile] = NAN;
+            profile1[iRowProfile*nColsProfile + iColProfile] = NAN;
+            profile2[iRowProfile*nColsProfile + iColProfile] = NAN;
+            profile3[iRowProfile*nColsProfile + iColProfile] = NAN;
         }
     }
 
@@ -3431,6 +3534,11 @@ void vol2birdTearDown() {
     free((void*) indexFrom);
     free((void*) indexTo);
     free((void*) nPointsWritten);
+    
+    // free arrays created for the getter quick fix
+    free((void*) profile1);
+    free((void*) profile2);
+    free((void*) profile3);
     
     
     // free the memory that holds the user configurable options
