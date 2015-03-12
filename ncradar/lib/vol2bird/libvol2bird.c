@@ -3301,6 +3301,7 @@ int vol2birdSetUp(PolarVolume_t* volume) {
     printPointsArray = cfg_getbool(cfg,"PRINT_POINTS_ARRAY");
     fitVrad = cfg_getbool(cfg,"FIT_VRAD");
     exportBirdProfileAsJSONVar = cfg_getbool(cfg,"EXPORT_BIRD_PROFILE_AS_JSON"); 
+    
 
     // ------------------------------------------------------------- //
     //              vol2bird options from constants.h                //
@@ -3442,19 +3443,13 @@ int vol2birdSetUp(PolarVolume_t* volume) {
     flagPositionVDifMax = 6;
     flagPositionAzimTooLow = 7;
     flagPositionAzimTooHigh = 8;
-
+    
+    
     // construct the 'points' array
     constructPointsArray(volume);
 
     // classify the gates based on the data in 'points'
     classifyGatesSimple();
-
-    if (printPointsArray == TRUE) {
-
-        vol2birdPrintIndexArrays();
-        vol2birdPrintPointsArray();
-
-    }
 
     // ------------------------------------------------------------- //
     //              information about the 'profile' array            //
@@ -3504,10 +3499,19 @@ int vol2birdSetUp(PolarVolume_t* volume) {
     iProfileTypeLast = -1;
 
     initializationSuccessful = TRUE;
-
+    
     if (printOptions == TRUE) {
         vol2birdPrintOptions();
     }
+    
+    if (printPointsArray == TRUE) {
+
+        vol2birdPrintIndexArrays();
+        vol2birdPrintPointsArray();
+
+    }
+    
+
 
     return 0;
 
